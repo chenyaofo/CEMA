@@ -5,3 +5,5 @@
 ```
 CUDA_VISIBLE_DEVICES=0 python -m entry.run --conf conf/cetta.conf -o outputs/
 ```
+
+I will improve the readme to include more comprehensive guidelines in the future.
