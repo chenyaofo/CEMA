@@ -14,7 +14,7 @@ from .cotta import CoTTA
 from .lame import LAME
 from .eata import EATA
 from.eata_plus import EATAPlus
-from .cetta import CETTA
+from .cema import CEMA
 from .cetta_clip import CETTA_CLIP
 
 TTADAPTER.register(CloudEdgeTestTimeAdaptation)
@@ -31,5 +31,5 @@ TTADAPTER.register(CoTTA)
 TTADAPTER.register(LAME)
 TTADAPTER.register(EATA)
 TTADAPTER.register(EATAPlus)
-TTADAPTER.register(CETTA)
+TTADAPTER.register(CEMA)
 TTADAPTER.register(CETTA_CLIP)

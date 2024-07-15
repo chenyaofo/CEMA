@@ -213,7 +213,7 @@ class SimilarityCriterion:
             return remain_ids
 
 
-class CETTA:
+class CEMA:
     def __init__(
         self,
         model: nn.Module,
@@ -474,9 +474,6 @@ class CETTA:
             return teacher_outputs
         else:
             return edge_outputs
-
-    # def __str__(self) -> str:
-    #     return f"Tent with tta_lr {self.tta_lr}"
 
     def extra_log(self):
         n_total_samples = self.entropy_criterion.n_total_samples

@@ -47,7 +47,8 @@ def prepare_for_tta(
     if torch.cuda.is_available():
         model = model.to(device=get_device())
     print(tta_config)
-    ttadapter = TTADAPTER.build_from(tta_config, default_args=dict(model=model))
+    ttadapter = TTADAPTER.build_from(
+        tta_config, default_args=dict(model=model))
     # print(ttadapter.foundation_model.preprocess)
     # test_loader = DATA.build_from(data_config, dict(local_rank=local_rank,clip_preprocess=ttadapter.foundation_model.preprocess))
     # print(model_config)
@@ -65,15 +66,6 @@ def prepare_for_tta(
     return model, ttadapter, test_loader, criterion
 
 
-def prepare_for_search(
-    actor_net: ConfigTree,
-    policy: ConfigTree,
-):
-    actor = Actor(**actor_net.as_plain_ordered_dict()).to(device=get_device())
-    policy = ContinuePolicyGradient(actor=actor, **policy.as_plain_ordered_dict())
-    return policy
-
-
 def _init(local_rank: int, ngpus_per_node: int, args: Args):
     set_proper_device(local_rank)
     rank = args.node_rank*ngpus_per_node+local_rank
@@ -88,12 +80,13 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
     _logger.info("Args:\n" + pprint.pformat(dataclasses.asdict(args)))
 
 
-def main_worker(local_rank: int,
-                ngpus_per_node: int,
-                args: Args,
-                conf: ConfigTree,
-                hyper_params_search=False
-                ):
+def main_worker(
+    local_rank: int,
+    ngpus_per_node: int,
+    args: Args,
+    conf: ConfigTree,
+    hyper_params_search=False
+):
 
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
 
@@ -112,7 +105,8 @@ def main_worker(local_rank: int,
         data_config_copy: ConfigTree = copy.deepcopy(data_config)
         data_config_copy["root"] = path
 
-        _logger.info(f"Start TTA with corruption_type={corrup_fine_grained_type} (level={seve}) at path={path}")
+        _logger.info(
+            f"Start TTA with corruption_type={corrup_fine_grained_type} (level={seve}) at path={path}")
 
         model, ttadapter, test_loader, criterion = prepare_for_tta(
             conf.get("model"),
@@ -123,51 +117,32 @@ def main_worker(local_rank: int,
             local_rank
         )
 
-        if conf.get("search"):
-            policy = prepare_for_search(conf.get("actor"), conf.get("policy"))
+        metrics = tta_one_epoch(
+            corruption_type=corrup_fine_grained_type,
+            model=model,
+            ttadapter=ttadapter,
+            loader=test_loader,
+            criterion=criterion,
+            device=get_device(),
+            log_interval=conf.get_int("log_interval")
+        )
 
-        if not conf.get("search"):
-            metrics = tta_one_epoch(
-                corruption_type=corrup_fine_grained_type,
-                model=model,
-                ttadapter=ttadapter,
-                loader=test_loader,
-                criterion=criterion,
-                device=get_device(),
-                log_interval=conf.get_int("log_interval")
-            )
-
-            top1_acc = metrics['top1_acc']
-            top5_acc = metrics['top5_acc']
-            _logger.info(f"TTA completes for {corrup_fine_grained_type}(severity={seve}), "
-                        f"val top1-acc={top1_acc*100:.4f}% (err={(1-top1_acc)*100:.4f}%), "
-                        f"top5-acc={top5_acc*100:.4f}% (err={(1-top5_acc)*100:.4f}%), "
-                        f"{metrics['extra_log']}")
-            if hyper_params_search:
-                return top1_acc
-        else:
-            pass
-            # tta_search_criterion(
-            #     alpha=conf.get_float("alpha"),
-            #     n_iters=conf.get_int("search_iters"),
-            #     eval_iters=conf.get_int("eval_iters"),
-            #     policy=policy,
-            #     corruption_type=corrup_fine_grained_type,
-            #     model=model,
-            #     ttadapter=ttadapter,
-            #     loader=test_loader,
-            #     criterion=criterion,
-            #     device=get_device(),
-            #     log_interval=conf.get_int("log_interval")
-            # )
-
+        top1_acc = metrics['top1_acc']
+        top5_acc = metrics['top5_acc']
+        _logger.info(f"TTA completes for {corrup_fine_grained_type}(severity={seve}), "
+                     f"val top1-acc={top1_acc*100:.4f}% (err={(1-top1_acc)*100:.4f}%), "
+                     f"top5-acc={top5_acc*100:.4f}% (err={(1-top5_acc)*100:.4f}%), "
+                     f"{metrics['extra_log']}")
+        if hyper_params_search:
+            return top1_acc
 
 
 def main(args: Args, hyper_params_search=False):
     distributed = args.world_size > 1
     ngpus_per_node = torch.cuda.device_count()
     if distributed:
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, args.conf))
+        mp.spawn(main_worker, nprocs=ngpus_per_node,
+                 args=(ngpus_per_node, args, args.conf))
     else:
         local_rank = 0
         return main_worker(local_rank, ngpus_per_node, args, args.conf, hyper_params_search=hyper_params_search)
