@@ -10,13 +10,13 @@ Please refer to `requirements.txt`
 
 Please download [ImageNet-C](https://github.com/hendrycks/robustness) and extract the tar files. Then use `tools/make_tfrec.py` to transfer raw image files into tfrecord format.
 
-**How to Run?**
+## Example: ImageNet-C Experiments
 
 ```
 python -m entry.run --conf conf/cema.conf -o outputs/
 ```
 
-**Citation**
+## Citation
 
 ```
 @inproceedings{chen2024towards,
